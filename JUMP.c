@@ -568,5 +568,5 @@ void HEX_display(int value){
 void JUMP_display(){
 	//value = 2;
 	*(HEX5_4_ptr) = (0x1F);
-	*(HEX3_0_ptr) = (0x73) | (0x37) << 8|  (0x37) << 16 |(0x3E) << 24;
+	*(HEX3_0_ptr) = (0x73) | (0x27) << 8|  (0x33) << 16 |(0x3E) << 24;
 }
