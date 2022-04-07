@@ -159,7 +159,7 @@ int main(void)
     int gameover = 0;
 	int jumpcount = 0;
 	
-	int Fspeed = 15; //frame rate
+	int Fspeed = 25; //frame rate
 	
     nplatform = 0;	// starting at platform 0
     int jumpx = 35; // fixed jumping position of the platform
@@ -259,13 +259,14 @@ int main(void)
 	draw_arr[1] = obj2;
 	nplatform += 1;
 
-	
-    for(int i = 0; i<Fspeed; i++){
+	int i;
+    for(i = 0; i<Fspeed; i++){
 		
         //block 1
         clear_char();
 		clear_draw_array();
-        for(int j =0; j<=focusidx;j++){
+		int j;
+        for(j =0; j<=focusidx; j++){
             if((draw_arr[j].x + xdiff) >=0&&(draw_arr[j].y + ydiff) <=(239-platform_arr[draw_arr[j].platformIdx].imageHeight)){
                 draw_arr[j].x += xdiff;
                 draw_arr[j].y += ydiff;
@@ -334,8 +335,11 @@ int main(void)
 				// following a platforms moving animation
 				
 				focusidx += 1;
-				int xdiff = round((jumpx - draw_arr[focusidx].x)/Fspeed);
-				int ydiff = round((jumpy - draw_arr[focusidx].y)/Fspeed);
+				// int xdiff = round((jumpx - draw_arr[focusidx].x)/Fspeed);
+				// int ydiff = round((jumpy - draw_arr[focusidx].y)/Fspeed);
+                
+                int xdiff = ((jumpx - draw_arr[focusidx].x)/Fspeed);
+				int ydiff = ((jumpy - draw_arr[focusidx].y)/Fspeed);
 				
 				//block 2 animation prep
 				
@@ -353,13 +357,15 @@ int main(void)
 					floatup = 1;
 					obj.y = 239;
 					obj.x = jumpx+rand_dis;
-					floatdis = round((jumpy-rand_dis * slant - 239)/Fspeed);
+                    floatdis = ((jumpy-rand_dis * slant - 239)/Fspeed);
+					// floatdis = round((jumpy-rand_dis * slant - 239)/Fspeed);
 				}
 											 
 				draw_arr[nplatform] = obj;
 				nplatform += 1;
 				int shift = 0;
-				for(int i = 0; i<Fspeed; i++){
+				int i;
+				for(i = 0; i<Fspeed; i++){
 					if(shift ==1){
 						clear_screen();
 						shift = 0;
@@ -367,7 +373,8 @@ int main(void)
 					//block 1
                     clear_char();
 					clear_draw_array();
-					for(int j =0; j<=focusidx;++j){
+					int j;
+					for(j =0; j<=focusidx;++j){
 						if((draw_arr[j].x + xdiff) >
 						   (0-platform_arr[draw_arr[j].platformIdx].imageWidth)&&(draw_arr[j].x + xdiff) <=319&&
 						   (draw_arr[j].y + ydiff) <=(239)
@@ -444,8 +451,9 @@ void plot_pixel(int x, int y, short int line_color)
 
 
 void clear_screen(){
-    for(int i = 0; i <= 319; i++){
-        for(int j = 0; j <240;j++){
+	int i, j;
+    for(i = 0; i <= 319; i++){
+        for(j = 0; j <240;j++){
             plot_pixel(i, j, 0x0);
         }
     }
@@ -453,8 +461,9 @@ void clear_screen(){
 
 void VGA_text_clean() {
     /* assume that the text string fits on one line */
-    for(int y=0;y<60;y++){
-        for(int x=0;x<80;x++){
+	int y, x;
+    for(y=0;y<60;y++){
+        for(x=0;x<80;x++){
             int offset = (y << 7) + x;
             *(character_buffer + offset) = 0;
             ++offset;
@@ -465,9 +474,9 @@ void VGA_text_clean() {
 void plot_image(int initialX, int initialY, int imageArray[], unsigned width, unsigned height) {
 
     int i = 0; // index for pixel colours in the image array
-
-    for (unsigned y = 0; y < height; y++) {
-        for (unsigned x = 0; x < width; x++) {
+	unsigned y, x;
+    for (y = 0; y < height; y++) {
+        for (x = 0; x < width; x++) {
             int plotX = initialX + x;
             int plotY = initialY + y;
 
@@ -496,9 +505,9 @@ void VGA_text(int x, int y, char *text_ptr) {
 }
 
 void shift_draw(){
-	int i = 0;
+	int i;
 	
-	for(int i = 0; i<nplatform-1;i++){
+	for(i = 0; i<nplatform-1;i++){
 		draw_arr[i] = draw_arr[i+1];
 	}	
 }
@@ -509,9 +518,9 @@ int random_distance(int high, int low){
 }
 
 void clear_draw_array(){
-	int x, y, idx;
+	int x, y, idx, k;
 	
-	for(int k=0; k<nplatform;k++){
+	for(k=0; k<nplatform;k++){
 		idx = draw_arr[k].platformIdx;
 		x = draw_arr[k].x;
 		y = draw_arr[k].y;
@@ -525,9 +534,9 @@ void clear_char(){
 }
 
 void draw_array(){
-    int x, y, idx;
+    int x, y, idx, i;
 	
-    for(int i=nplatform-1; i>=0;i--){
+    for(i=nplatform-1; i>=0;i--){
         idx = draw_arr[i].platformIdx;
         x = draw_arr[i].x;
         y = draw_arr[i].y;
@@ -542,8 +551,9 @@ void draw_char(int idx){
 }
 
 void draw_box(int x, int y, int width, int height, short int col){
-	for(int i = x-10; i < x+width+30; i++){
-		for(int j = y-30; j < y+height+20; j++){
+	int i,j;
+	for(i = x-10; i < x+width+30; i++){
+		for(j = y-30; j < y+height+20; j++){
 			if(i>=0&&i<320&&j>=0&&j<240){
 				plot_pixel(i, j, col);}
 		}
