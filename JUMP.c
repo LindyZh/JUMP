@@ -156,7 +156,6 @@ int main(void)
     int on = 0;
 
     // initialize game stage settings
-    int game = 0;
     int gameover = 0;
 	int jumpcount = 0;
 	
@@ -203,259 +202,271 @@ int main(void)
 	char_arr[3] = char3;
 	char_arr[4] = char4;
 	char_arr[5] = char5;
-	
-	JUMP_display();
-	
-	// front buffer draw
-    *(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE; 
-    wait_for_vsync();
-    pixel_buffer_start = *pixel_ctrl_ptr;
-    draw_title();
-    draw obj1 = {0, 110.0, 120.0};
-    draw_arr[0] = obj1;
-    nplatform = 1;
-    draw_array();
-    draw_char(0);//draw character
-	
-	// back buffer draw
-    *(pixel_ctrl_ptr + 1) = SDRAM_BASE;
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
-	clear_screen();
-    draw_array();
-	draw_char(0);//draw character
-	
 
-    //title loop (should only be in this stage once)
-	
-    int edgestatus;
-    edgestatus = *(key_edgecap);
+	while(1){
+		JUMP_display();
 
-    while((edgestatus & 0x0001) == 0){
-		// if key0 is not pressed, keep pulling the edge trigger value
-        edgestatus = *(key_edgecap);
-    }
-    *(key_edgecap) = 0x0000000F; // clear edge trigger for later IO device pulling
-    wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-    pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    VGA_text_clean();
-	// if add title animation, added it here
-	/*
-		TITLE ANIMATION CODE
-	*/
-    clear_screen();// clear the screen black
-	// game start animation (should only show once)
-    double xdiff = (jumpx - draw_arr[focusidx].x)/Fspeed;
-    double ydiff = (jumpy - draw_arr[focusidx].y)/Fspeed;
-	//block 2 animation prep
-	double rand_dis = (double)random_distance(170,70);
-	//int rand_dis = 67;
-	double falldis = 200.0/Fspeed;
-	
-	// slant is y=cx (slope) by which we get y coord 
-	double fally = jumpy-rand_dis*slant;
-	double inity2 = 0;
-	if(fally - falldis*Fspeed > 0.0){
-		inity2 = fally - falldis * Fspeed;
-	}
-	draw obj2 = {random_distance(6,0), jumpx+rand_dis, inity2};
-	draw_arr[1] = obj2;
-	nplatform += 1;
-
-	int i, j;	
-    for(i = 0; i<Fspeed; i++){
-		
-        //block 1
-        clear_char();
-		clear_draw_array();
-        for(j =0; j<=focusidx; j++){
-            if((draw_arr[j].x + xdiff) >=0.0 &&(draw_arr[j].y + ydiff) <=(239.0-platform_arr[draw_arr[j].platformIdx].imageHeight)){
-                draw_arr[j].x += xdiff;
-                draw_arr[j].y += ydiff;
-            }
-        }
-        charX += xdiff;
-        charY += ydiff;
-        
-		//block 2
-		if((fally-falldis * (Fspeed-1.0-i))>=0.0){
-			draw_arr[focusidx+1].y = fally-falldis * (Fspeed-1.0-i);
-		}
-		
-        draw_array();
+		// front buffer draw
+		*(pixel_ctrl_ptr + 1) = FPGA_ONCHIP_BASE; 
+		wait_for_vsync();
+		pixel_buffer_start = *pixel_ctrl_ptr;
+		draw_title();
+		draw obj1 = {0, 110.0, 120.0};
+		draw_arr[0] = obj1;
+		nplatform = 1;
+		draw_array();
 		draw_char(0);//draw character
 		
-        wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    }
-	// clear HEX display JUMP and show count
-	HEX_display(jumpcount);
+		// back buffer draw
+		*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
+		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
+		clear_screen();
+		draw_array();
+		draw_char(0);//draw character
+		
 
-    //game start loop
-    while(1)
-    {
-        if(((*key_ptr)& (0x0001))!=0){
-			// if key0 is pressed
-            if(value>512){
-                *led_ptr = on;
-                if(on==0){
-                    on = 1023;
-                }else{
-                    on = 0;
-                }
-            }else {
-                power += value;
-                *led_ptr = power;
-                value = value * 2; // shifting the bits to create power accumulation animation on LEDR
-            }
-            clear_char();
-			clear_draw_array();
-			draw_array();
-			
-            if(itrN<=9){
-                draw_char(itrN/2+1);//draw character
-            }else{
-				draw_char(5);
-			}
-            itrN += 1;
-            //clear_screen();
-			
-        }else{
-            itrN = 0;
-			value = 1;
-			power = 0;
-			*led_ptr = 0;
+		//title loop (should only be in this stage once)
+		
+		int edgestatus;
+		edgestatus = *(key_edgecap);
+
+		while((edgestatus & 0x0001) == 0){
+			// if key0 is not pressed, keep pulling the edge trigger value
 			edgestatus = *(key_edgecap);
-			if((edgestatus & 0x0001) == 0){
-				//waiting for user to press key0 here
-				clear_screen(); // user clear_screen to create the drag here
-			}else{
-				// user just finished their pressing input to the game
-				*(key_edgecap) = 0x0000000F;
-				// do jump animation here
-				
-				double a = -2.5; 
-				
-				// offset -10 otherwise off block when shift
-				double total_x =  draw_arr[focusidx+1].x - jumpx - 10;
-				double total_y = jumpy - draw_arr[focusidx+1].y;
-				//float total_x =  draw_arr[focusidx+1].x - charX;
-				//float total_y = charY - draw_arr[focusidx+1].y;
-				
-				double total_t = Fspeed;
-				
-				double init_velocity_x = total_x/total_t; 
-				double init_velocity_y = (total_y - (0.5*a*total_t*total_t))/total_t; // y = y0 + v0yt + 0.5gt^2
-				
-				double init_char_x = charX;
-				double init_char_y = charY;
-				
-				int t;
-				for(t = 1; t <= Fspeed; t++){
-					clear_char();
-					clear_draw_array();
-					
-					// displacement relative to starting position
-					double distx = init_velocity_x*t; 
-					double disty = (init_velocity_y*t) + (0.5*a*t*t);
-					
-					charX = init_char_x + distx; 
-					charY = init_char_y - disty;
-					
-					draw_array();
-					draw_char(0);
-					
-					wait_for_vsync();
-					pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
-				}
-				
-				// following a platforms moving animation
-				
-				focusidx += 1;
-				double xdiff = (jumpx - draw_arr[focusidx].x)/Fspeed;
-				double ydiff = (jumpy - draw_arr[focusidx].y)/Fspeed;
-				
-				//block 2 animation prep
-				
-				double rand_dis = (double)random_distance(170,70);
-				//rand_dis = 50; //for testing purpose
-				double beginx = jumpx+rand_dis+(draw_arr[focusidx].x-jumpx);
-				double beginy = jumpy-rand_dis * slant-(jumpy-draw_arr[focusidx].y);
-				draw obj = {random_distance(6,0), beginx, beginy};
-				//check if block2 in visible screen, if so float instead of suddenly shows
-				int floatup = 0;
-				double floatdis = 0;
-				if(beginx>(0-platform_arr[obj.platformIdx].imageWidth)&&
-				  beginx<319 && beginy <239 &&
-				  beginy>=(0-platform_arr[obj.platformIdx].imageHeight)){
-					floatup = 1;
-					obj.y = 239.0;
-					obj.x = jumpx+rand_dis;
-					floatdis = (jumpy-rand_dis * slant - 239.0)/Fspeed;
-				}
+		}
+		*(key_edgecap) = 0x0000000F; // clear edge trigger for later IO device pulling
+		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+		VGA_text_clean();
+		// if add title animation, added it here
+		/*
+			TITLE ANIMATION CODE
+		*/
+		clear_screen();// clear the screen black
+		// game start animation (should only show once)
+		double xdiff = (jumpx - draw_arr[focusidx].x)/Fspeed;
+		double ydiff = (jumpy - draw_arr[focusidx].y)/Fspeed;
+		//block 2 animation prep
+		double rand_dis = (double)random_distance(170,70);
+		//int rand_dis = 67;
+		double falldis = 200.0/Fspeed;
+		
+		// slant is y=cx (slope) by which we get y coord 
+		double fally = jumpy-rand_dis*slant;
+		double inity2 = 0;
+		if(fally - falldis*Fspeed > 0.0){
+			inity2 = fally - falldis * Fspeed;
+		}
+		draw obj2 = {random_distance(6,0), jumpx+rand_dis, inity2};
+		draw_arr[1] = obj2;
+		nplatform += 1;
+
+		int i, j;	
+		for(i = 0; i<Fspeed; i++){
 			
-				draw_arr[nplatform] = obj;
-				nplatform += 1;
-				int shift = 0;
-				int i, j;
-				for(i = 0; i<Fspeed; i++){
-					if(shift ==1){
-						clear_screen();
-						shift = 0;
-					}
-					//block 1
-                    clear_char();
-					clear_draw_array();
-					for(j =0; j<=focusidx;++j){
-						if((draw_arr[j].x + xdiff) >
-						   (0-platform_arr[draw_arr[j].platformIdx].imageWidth)&&(draw_arr[j].x + xdiff) <=319&&
-						   (draw_arr[j].y + ydiff) <=(239)
-						  &&(draw_arr[j].y + ydiff)>=(0-platform_arr[draw_arr[j].platformIdx].imageHeight)){
-							draw_arr[j].x += xdiff;
-							draw_arr[j].y += ydiff;
-						}else{
-							shift = 1;
-							continue;
-						}
-					}
-					
-					// shift char too
-					charX += xdiff;
-					charY += ydiff;
-					
-					// block 2
-					if(floatup){
-						draw_arr[focusidx+1].y += floatdis;
-					}else{
-						draw_arr[focusidx+1].x += xdiff;
-						draw_arr[focusidx+1].y += ydiff;
-					}
-					if(shift == 1){
-						shift_draw();
-						nplatform -= 1;
-						focusidx -= 1;
-					}
-					draw_array();
-                    draw_char(0);//draw character
-					wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-					pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-					
+			//block 1
+			clear_char();
+			clear_draw_array();
+			for(j =0; j<=focusidx; j++){
+				if((draw_arr[j].x + xdiff) >=0.0 &&(draw_arr[j].y + ydiff) <=(239.0-platform_arr[draw_arr[j].platformIdx].imageHeight)){
+					draw_arr[j].x += xdiff;
+					draw_arr[j].y += ydiff;
 				}
-			// if sucessful, update jump count
-			jumpcount += 1;
-			HEX_display(jumpcount);
 			}
-            clear_screen();
-            draw_array();
+			charX += xdiff;
+			charY += ydiff;
+			
+			//block 2
+			if((fally-falldis * (Fspeed-1.0-i))>=0.0){
+				draw_arr[focusidx+1].y = fally-falldis * (Fspeed-1.0-i);
+			}
+			
+			draw_array();
 			draw_char(0);//draw character
-            //clear_screen();
-        }
-        //check press at every active drawing cycle
+			
+			wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+			pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+		}
+		// clear HEX display JUMP and show count
+		HEX_display(jumpcount);
+
+		//game start loop
+		while(1)
+		{
+			if(((*key_ptr)& (0x0001))!=0){
+				// if key0 is pressed
+				if(value>512){
+					
+					gameover = 1; // testing fail flag
+					
+					*led_ptr = on;
+					if(on==0){
+						on = 1023;
+					}else{
+						on = 0;
+					}
+				}else {
+					power += value;
+					*led_ptr = power;
+					value = value * 2; // shifting the bits to create power accumulation animation on LEDR
+				}
+				clear_char();
+				clear_draw_array();
+				draw_array();
+				
+				if(itrN<=9){
+					draw_char(itrN/2+1);//draw character
+				}else{
+					draw_char(5);
+				}
+				itrN += 1;
+				//clear_screen();
+				
+			}else{
+				itrN = 0;
+				value = 1;
+				power = 0;
+				*led_ptr = 0;
+				edgestatus = *(key_edgecap);
+				if((edgestatus & 0x0001) == 0){
+					//waiting for user to press key0 here
+					clear_screen(); // user clear_screen to create the drag here
+				}else{
+					// user just finished their pressing input to the game
+					*(key_edgecap) = 0x0000000F;
+					// do jump animation here
+					
+					double a = -2.5; 
+					
+					// offset -10 otherwise off block when shift
+					double total_x =  draw_arr[focusidx+1].x - jumpx - 10;
+					double total_y = jumpy - draw_arr[focusidx+1].y;
+					//float total_x =  draw_arr[focusidx+1].x - charX;
+					//float total_y = charY - draw_arr[focusidx+1].y;
+					
+					double total_t = Fspeed;
+					
+					double init_velocity_x = total_x/total_t; 
+					double init_velocity_y = (total_y - (0.5*a*total_t*total_t))/total_t; // y = y0 + v0yt + 0.5gt^2
+					
+					double init_char_x = charX;
+					double init_char_y = charY;
+					
+					int t;
+					for(t = 1; t <= Fspeed; t++){
+						clear_char();
+						clear_draw_array();
+						
+						// displacement relative to starting position
+						double distx = init_velocity_x*t; 
+						double disty = (init_velocity_y*t) + (0.5*a*t*t);
+						
+						charX = init_char_x + distx; 
+						charY = init_char_y - disty;
+						
+						draw_array();
+						draw_char(0);
+						
+						wait_for_vsync();
+						pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
+					}
+					
+					if(gameover){
+						charX = 147.0; //set initial character x, y position
+						charY = 100.0;
+						gameover==0;
+						break;
+					}
+
+					// following a platforms moving animation
+					
+					focusidx += 1;
+					double xdiff = (jumpx - draw_arr[focusidx].x)/Fspeed;
+					double ydiff = (jumpy - draw_arr[focusidx].y)/Fspeed;
+					
+					//block 2 animation prep
+					
+					double rand_dis = (double)random_distance(170,70);
+					//rand_dis = 50; //for testing purpose
+					double beginx = jumpx+rand_dis+(draw_arr[focusidx].x-jumpx);
+					double beginy = jumpy-rand_dis * slant-(jumpy-draw_arr[focusidx].y);
+					draw obj = {random_distance(6,0), beginx, beginy};
+					//check if block2 in visible screen, if so float instead of suddenly shows
+					int floatup = 0;
+					double floatdis = 0;
+					if(beginx>(0-platform_arr[obj.platformIdx].imageWidth)&&
+					beginx<319 && beginy <239 &&
+					beginy>=(0-platform_arr[obj.platformIdx].imageHeight)){
+						floatup = 1;
+						obj.y = 239.0;
+						obj.x = jumpx+rand_dis;
+						floatdis = (jumpy-rand_dis * slant - 239.0)/Fspeed;
+					}
+				
+					draw_arr[nplatform] = obj;
+					nplatform += 1;
+					int shift = 0;
+					int i, j;
+					for(i = 0; i<Fspeed; i++){
+						if(shift ==1){
+							clear_screen();
+							shift = 0;
+						}
+						//block 1
+						clear_char();
+						clear_draw_array();
+						for(j =0; j<=focusidx;++j){
+							if((draw_arr[j].x + xdiff) >
+							(0-platform_arr[draw_arr[j].platformIdx].imageWidth)&&(draw_arr[j].x + xdiff) <=319&&
+							(draw_arr[j].y + ydiff) <=(239)
+							&&(draw_arr[j].y + ydiff)>=(0-platform_arr[draw_arr[j].platformIdx].imageHeight)){
+								draw_arr[j].x += xdiff;
+								draw_arr[j].y += ydiff;
+							}else{
+								shift = 1;
+								continue;
+							}
+						}
+						
+						// shift char too
+						charX += xdiff;
+						charY += ydiff;
+						
+						// block 2
+						if(floatup){
+							draw_arr[focusidx+1].y += floatdis;
+						}else{
+							draw_arr[focusidx+1].x += xdiff;
+							draw_arr[focusidx+1].y += ydiff;
+						}
+						if(shift == 1){
+							shift_draw();
+							nplatform -= 1;
+							focusidx -= 1;
+						}
+						draw_array();
+						draw_char(0);//draw character
+						wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+						pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+						
+					}
+				// if sucessful, update jump count
+				jumpcount += 1;
+				HEX_display(jumpcount);
+				}
+				clear_screen();
+				draw_array();
+				draw_char(0);//draw character
+				//clear_screen();
+			}
+			//check press at every active drawing cycle
 
 
 
-        wait_for_vsync(); // swap front and back buffers on VGA vertical sync
-        pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
-    }
+			wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+			pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+		}
+	}
 }
 
 void wait_for_vsync(){
