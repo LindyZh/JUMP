@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
+#include <tgmath.h>
 // #include "address_amp_arm.h"
 
 //============================================================================
@@ -171,6 +172,9 @@ int main(void)
 	charW = 15;
 	charH = 50;
 	
+    int delay_count = 3;
+    int jump_strength; 
+	
 	// initialize different type of platform (right now all using the default platform 0 data, swap when needed)
     platform_arr[0].imageWidth = 90;
     platform_arr[0].imageHeight = 80;
@@ -294,26 +298,26 @@ int main(void)
 		while(1)
 		{
 			if(((*key_ptr)& (0x0001))!=0){
+			     if(delay_count > 0){
+			        delay_count -= 1;
+			     }else{ 
 				// if key0 is pressed
 				if(value>512){
-					
-					gameover = 1; // testing fail flag
-					
-					*led_ptr = on;
-					if(on==0){
-						on = 1023;
-					}else{
-						on = 0;
-					}
+				    *led_ptr = on;
+				    if(on==0){
+				      on = 1023;
+				    }else{
+				      on = 0;
+				    }
 				}else {
-					power += value;
-					*led_ptr = power;
-					value = value * 2; // shifting the bits to create power accumulation animation on LEDR
+				    power += value;
+				    *led_ptr = power;
+				     value = value * 2; // shifting the bits to create power accumulation animation on LEDR
 				}
 				clear_char();
 				clear_draw_array();
 				draw_array();
-				
+
 				if(itrN<=9){
 					draw_char(itrN/2+1);//draw character
 				}else{
@@ -321,10 +325,12 @@ int main(void)
 				}
 				itrN += 1;
 				//clear_screen();
+				delay_count = 3;
+			     }
 				
 			}else{
 				itrN = 0;
-				value = 1;
+				//value = 1;
 				power = 0;
 				*led_ptr = 0;
 				edgestatus = *(key_edgecap);
@@ -336,14 +342,35 @@ int main(void)
 					*(key_edgecap) = 0x0000000F;
 					// do jump animation here
 					
+					jump_strength = log2(value); // how "hard" did user press key
+					value = 1; // reset value 
+			
 					double a = -2.5; 
-					
-					// offset -10 otherwise off block when shift
-					double total_x =  draw_arr[focusidx+1].x - jumpx - 10;
-					double total_y = jumpy - draw_arr[focusidx+1].y;
-					//float total_x =  draw_arr[focusidx+1].x - charX;
-					//float total_y = charY - draw_arr[focusidx+1].y;
-					
+				
+					int total_x = draw_arr[focusidx+1].x - jumpx; // x dist to next block
+					int total_y = jumpy - draw_arr[focusidx+1].y; // y dist to next block
+				
+					// x dist based on strength, always ahead of current block
+					//total_x = ((jumpx + 90/2) + (jump_strength*5))%220;
+					int dist_to_edge = (draw_arr[focusidx].x + 90) - charX + (2*charW); 
+					total_x = (dist_to_edge + (jump_strength*5))%220;
+				
+					// if x dist is at "tip" of block, adjust x dist
+					if ((charX + total_x) >= draw_arr[focusidx+1].x - charW &&
+				   	 (charX + total_x) <= draw_arr[focusidx+1].x + charW){
+					       total_x -= charW;
+					}else if ((charX + total_x) == draw_arr[focusidx+1].x + 90){
+						total_x += charW; 
+					}
+				
+					// if x dist is ahead/beyond block, adjust y dist to be on "ground"
+					if ((charX + total_x) > draw_arr[focusidx+1].x + 90|| 
+				   	 (charX + total_x) < draw_arr[focusidx+1].x) {
+						// should account for slant 
+						total_y -= 80; // 80 is imageHeight 
+					} 
+
+					// projectile jump based on total_x and total_y
 					double total_t = Fspeed;
 					
 					double init_velocity_x = total_x/total_t; 
@@ -369,6 +396,13 @@ int main(void)
 						
 						wait_for_vsync();
 						pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
+					}
+					
+					// check if successful jump
+					if (charX > draw_arr[focusidx+1].x + 90 || 
+				    	  charX < draw_arr[focusidx+1].x){
+						*led_ptr = 1; 
+						// set fail = 1 here 
 					}
 					
 					if(gameover){
