@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
+#include <tgmath.h>
 // #include "address_amp_arm.h"
 
 //============================================================================
@@ -196,6 +197,10 @@ int main(void)
 	charW = 15;
 	charH = 50;
 	
+	// for power bar delay action
+	int delay_count = 3;
+	int jump_strength;
+	
 	// initialize different type of platform (right now all using the default platform 0 data, swap when needed)
     platform_arr[0].imageWidth = 90;
     platform_arr[0].imageHeight = 80;
@@ -238,8 +243,8 @@ int main(void)
 	//audio_arr[1].audioarr = sound_arr2;
 	//audio_arr[1].audiosize = 1004;
 
-	audio_arr[2].audioarr = sound_arrlong;
-	audio_arr[2].audiosize = 19584;
+	//audio_arr[2].audioarr = sound_arrlong;
+	//audio_arr[2].audiosize = 19584;
 	
 	// audio_arr[3].audioarr = sound_arr4;
 	// audio_arr[3].audiosize = 1033;
@@ -262,15 +267,14 @@ int main(void)
 	// audio_arr[9].audioarr = sound_arr10;
 	// audio_arr[9].audiosize = 1120;
 	
-	while(1){
-		int audio_idx = 0;
-		int num;
-		
-		for(num = 0; num < audio_arr[audio_idx].audiosize; num++){
-			*(audio_ptr + 2) = (audio_arr[audio_idx].audioarr)[num*2];
-			*(audio_ptr + 3) = (audio_arr[audio_idx].audioarr)[num*2+1];
-		}
-	}
+	//while(1){
+	//	int audio_idx = 0;
+	//	int num;
+	//	for(num = 0; num < audio_arr[audio_idx].audiosize; num++){
+	//		*(audio_ptr + 2) = (audio_arr[audio_idx].audioarr)[num*2];
+	//		*(audio_ptr + 3) = (audio_arr[audio_idx].audioarr)[num*2+1];
+	//	}
+	//}
 
 	//=========== experimenting with audio ===================
 
@@ -369,66 +373,103 @@ int main(void)
 		while(1)
 		{
 			if(((*key_ptr)& (0x0001))!=0){
-
-				// if key0 is pressed
-				if(value>512){
-					
-					gameover = 1; // testing fail flag
-					
-					*led_ptr = on;
-					if(on==0){
-						on = 1023;
+				if(delay_count>0){
+					delay_count -= 1;
+					clear_char();
+					clear_draw_array();
+					draw_array();
+					if(itrN<=9){
+						draw_char(itrN/2+1);//draw character
 					}else{
-						on = 0;
+						draw_char(5);
 					}
-				}else {
-					// read the audio port fifospace register
-					//=========== experimenting with audio ===================
-					//int audio_idx = 1;
-					//int num;
-					//for(num = 0; num < audio_arr[audio_idx].audiosize; num++){
-					//	*(audio_ptr + 2) = (audio_arr[audio_idx].audioarr)[num*2];
-					//	*(audio_ptr + 3) = (audio_arr[audio_idx].audioarr)[num*2+1];
-					//}
-					//=========== experimenting with audio ===================
-					power += value;
-					*led_ptr = power;
-					value = value * 2; // shifting the bits to create power accumulation animation on LEDR
-				}
-				clear_char();
-				clear_draw_array();
-				draw_array();
-				
-				if(itrN<=9){
-					draw_char(itrN/2+1);//draw character
 				}else{
-					draw_char(5);
+					// if key0 is pressed
+					if(value>512){
+						
+						//gameover = 1; // testing fail flag
+						
+						*led_ptr = on;
+						if(on==0){
+							on = 1023;
+						}else{
+							on = 0;
+						}
+					}else {
+						// read the audio port fifospace register
+						//=========== experimenting with audio ===================
+						//int audio_idx = 1;
+						//int num;
+						//for(num = 0; num < audio_arr[audio_idx].audiosize; num++){
+						//	*(audio_ptr + 2) = (audio_arr[audio_idx].audioarr)[num*2];
+						//	*(audio_ptr + 3) = (audio_arr[audio_idx].audioarr)[num*2+1];
+						//}
+						//=========== experimenting with audio ===================
+						power += value;
+						*led_ptr = power;
+						value = value * 2; // shifting the bits to create power accumulation animation on LEDR
+					}
+					clear_char();
+					clear_draw_array();
+					draw_array();
+					
+					if(itrN<=9){
+						draw_char(itrN/2+1);//draw character
+					}else{
+						draw_char(5);
+					}
+					itrN += 1;
+					//clear_screen();
+					delay_count = 3;
 				}
-				itrN += 1;
-				//clear_screen();
-				
 			}else{
 				itrN = 0;
-				value = 1;
+				//value = 1;
 				power = 0;
 				*led_ptr = 0;
 				edgestatus = *(key_edgecap);
 				if((edgestatus & 0x0001) == 0){
 					//waiting for user to press key0 here
+					value = 1;
 					clear_screen(); // user clear_screen to create the drag here
 				}else{
 					// user just finished their pressing input to the game
 					*(key_edgecap) = 0x0000000F;
+
 					// do jump animation here
+					//jump_strength = log2(value);
+					jump_strength = itrN;
+					value = 1;
+					double a = -0.5; 
 					
-					double a = -2.5; 
-					
-					// offset -10 otherwise off block when shift
-					double total_x =  draw_arr[focusidx+1].x - jumpx - 10;
-					double total_y = jumpy - draw_arr[focusidx+1].y;
-					//float total_x =  draw_arr[focusidx+1].x - charX;
-					//float total_y = charY - draw_arr[focusidx+1].y;
-					
+					// account for the block width and character width
+					double total_x =  (draw_arr[focusidx+1].x + 45.0) - (charX + charW/2);
+					// account for the block height and character height
+					double total_y =  -1*((draw_arr[focusidx+1].y + 30.0) - (charY + 50.0));
+
+					// x dist based on strength, always ahead of current block
+
+					//total_x = ((jumpx + 90/2) + (jump_strength*5))%220;
+					//double dist_to_edge = (draw_arr[focusidx].x + 8) - (charX); 
+					//total_x = (double)((int)(dist_to_edge + (jump_strength*5)) % 220);
+
+					// // if x dist is at "tip" of block, adjust x dist
+					// if ((charX + total_x) >= draw_arr[focusidx+1].x - charW &&
+				   	//  (charX + total_x) <= draw_arr[focusidx+1].x){
+					//        total_x -= charW;
+					// }else if ((charX + total_x) == draw_arr[focusidx+1].x + 45.0){
+					// 	total_x += charW; 
+					// }
+
+					// // if x dist is ahead/beyond block, adjust y dist to be on "ground"
+					// if ((charX + total_x) > draw_arr[focusidx+1].x + 90.0|| 
+				   	//  (charX + total_x) < draw_arr[focusidx+1].x) {
+					// 	// should account for slant 
+					// 	gameover = 1;
+					// 	total_y -= 80.0; // 80 is imageHeight 
+					// } 
+
+					// projectile jump based on total_x and total_y
 					double total_t = Fspeed;
 					
 					double init_velocity_x = total_x/total_t; 
@@ -443,10 +484,9 @@ int main(void)
 						clear_draw_array();
 						
 						// displacement relative to starting position
-						double distx = init_velocity_x*t; 
 						double disty = (init_velocity_y*t) + (0.5*a*t*t);
 						
-						charX = init_char_x + distx; 
+						charX += init_velocity_x; 
 						charY = init_char_y - disty;
 						
 						draw_array();
@@ -455,8 +495,17 @@ int main(void)
 						wait_for_vsync();
 						pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
 					}
-					
+					if(charX > draw_arr[focusidx+1].x +90.0||charX < draw_arr[focusidx+1].x){
+						*led_ptr = 1;
+					}
+
 					if(gameover){
+						/*gameover page here*/
+						// save jumpcount into history
+						// wait for user input to return to the beginning page
+
+
+
 						charX = 147.0; //set initial character x, y position
 						charY = 100.0;
 						gameover=0;
@@ -570,6 +619,7 @@ void wait_for_vsync(){
 void draw_title(){
 	VGA_text_clean();
 	char title_text[]= "Press Key0 to start game";
+	char history_best[] = 
 	clear_screen();
 	//plot_image(110, 120, image_box_100_83, 100, 83);
 	plot_image(50, 5, image_title_210_70, 210, 70);
@@ -712,4 +762,3 @@ void JUMP_display(){
 	*(HEX5_4_ptr) = (0x1F);
 	*(HEX3_0_ptr) = (0x73) | (0x27) << 8|  (0x33) << 16 |(0x3E) << 24;
 }
-
