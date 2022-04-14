@@ -153,6 +153,7 @@ audio audio_arr[10];
 
 
 int nplatform;
+int history_Best;
 double charX, charY; 
 int charW, charH;
 
@@ -202,6 +203,9 @@ int main(void)
 	int delay_num = 3;
 	int delay_count = delay_num;
 	int jump_strength;
+
+	//history data
+	history_Best = 0;
 	
 	// initialize different type of platform (right now all using the default platform 0 data, swap when needed)
     platform_arr[0].imageWidth = 90;
@@ -457,7 +461,7 @@ int main(void)
 					if(jump_strength < delay_num) {continue;}
 					else if(jump_strength > delay_num * 10) {jump_strength = delay_num * 10;} // set the maximum that the block can jump
 
-					double total_x = 50.0 + (((double)jump_strength / (double)(delay_num *10))*200);
+					double total_x = 50.0 + (((double)jump_strength / (double)(delay_num *10))*270);
 					double total_y =  -1*((draw_arr[focusidx+1].y + 30.0) - (charY + 50.0))*(total_x/perfect_x);
 
 					//total_x = ((jumpx + 90/2) + (jump_strength*5))%220;
@@ -530,6 +534,9 @@ int main(void)
 						clear_draw_array();
 						draw_array();
 						draw_char(0);
+						if(jumpcount > history_Best){
+							history_Best = jumpcount;
+						}
 						// strip clear animation
 						int a, b, c, d, colour;
 						for(a = 0; a<325; a++){
@@ -550,6 +557,9 @@ int main(void)
 							pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
 						}
 						// draw_title();
+						charX = 147.0; //set initial character x, y position
+						charY = 100.0;
+
 						JUMP_display();
 						draw objnew = {0, 110.0, 120.0};
 						draw_arr[0] = objnew;
@@ -564,7 +574,7 @@ int main(void)
 									for(b = 0; b<240; b++){
 									plot_pixel(d, b, 0x0);
 									plot_pixel(325-d, b, 0x0);
-								}
+									}
 
 								}
 							// }
@@ -572,10 +582,8 @@ int main(void)
 							pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
 						}
 
-						while(1){}
+						// while(1){}
 
-						charX = 147.0; //set initial character x, y position
-						charY = 100.0;
 						gameover=0;
 						break;
 					}
@@ -685,11 +693,26 @@ void wait_for_vsync(){
 void draw_title(){
 	VGA_text_clean();
 	char title_text[]= "Press Key0 to start game";
-	// char history_best[] = 
+	const char* history_msg = "The best jumping record now is ";
+	char buffer[100];
+	char *num;
+	// char history_best[] = sprintf(text, "%d", number);
+	
 	clear_screen();
 	//plot_image(110, 120, image_box_100_83, 100, 83);
 	plot_image(50, 5, image_title_210_70, 210, 70);
-	VGA_text(28, 20, title_text);
+
+	if (asprintf(&num, "%d", history_Best) == -1) {
+        perror("asprintf");
+    } else {
+        strcat(strcpy(buffer, history_msg), num);
+        printf("%s\n", buffer);
+    }
+
+	VGA_text(28, 56, title_text);
+	VGA_text(23, 54, buffer);
+
+	free(num);
 }
 
 void clear_title(){
