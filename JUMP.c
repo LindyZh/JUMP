@@ -159,6 +159,7 @@ int charW, charH;
 void draw_title();
 void draw_array();
 void shift_draw();
+void clear_title();
 void clear_screen();
 void clear_draw_array();
 void wait_for_vsync();
@@ -187,7 +188,7 @@ int main(void)
     // initialize game stage settings
     int gameover = 0;
 	
-	double Fspeed = 35.0; //frame rate
+	double Fspeed = 10.0; //frame rate
 	
     double jumpx = 35; // fixed jumping position of the platform
     double jumpy = 120; // fixed jumping position of the platform
@@ -198,7 +199,8 @@ int main(void)
 	charH = 50;
 	
 	// for power bar delay action
-	int delay_count = 3;
+	int delay_num = 3;
+	int delay_count = delay_num;
 	int jump_strength;
 	
 	// initialize different type of platform (right now all using the default platform 0 data, swap when needed)
@@ -300,6 +302,7 @@ int main(void)
 		*(pixel_ctrl_ptr + 1) = SDRAM_BASE;
 		pixel_buffer_start = *(pixel_ctrl_ptr + 1); // we draw on the back buffer
 		clear_screen();
+		draw_title();
 		draw_array();
 		draw_char(0);//draw character
 		
@@ -320,7 +323,8 @@ int main(void)
 		/*
 			TITLE ANIMATION CODE
 		*/
-		clear_screen();// clear the screen black
+		clear_title();
+		// clear_screen();// clear the screen black
 		// game start animation (should only show once)
 		double xdiff = (jumpx - draw_arr[focusidx].x)/Fspeed;
 		double ydiff = (jumpy - draw_arr[focusidx].y)/Fspeed;
@@ -420,9 +424,10 @@ int main(void)
 					}
 					itrN += 1;
 					//clear_screen();
-					delay_count = 3;
+					delay_count = delay_num;
 				}
 			}else{
+				jump_strength = itrN;
 				itrN = 0;
 				//value = 1;
 				power = 0;
@@ -438,22 +443,37 @@ int main(void)
 
 					// do jump animation here
 					//jump_strength = log2(value);
-					jump_strength = itrN;
 					value = 1;
 					double a = -0.5; 
 					
-					// account for the block width and character width
-					double total_x =  (draw_arr[focusidx+1].x + 45.0) - (charX + charW/2);
+					// original test x value that accounts for the block width and character width
+					double perfect_x =  (draw_arr[focusidx+1].x + 45.0) - (charX + charW/2);
+
 					// account for the block height and character height
-					double total_y =  -1*((draw_arr[focusidx+1].y + 30.0) - (charY + 50.0));
+					// double total_y =  -1*((draw_arr[focusidx+1].y + 30.0) - (charY + 50.0));
 
 					// x dist based on strength, always ahead of current block
+					// if it is a small trigger, then ignore it
+					if(jump_strength < delay_num) {continue;}
+					else if(jump_strength > delay_num * 10) {jump_strength = delay_num * 10;} // set the maximum that the block can jump
+
+					double total_x = 50.0 + (((double)jump_strength / (double)(delay_num *10))*200);
+					double total_y =  -1*((draw_arr[focusidx+1].y + 30.0) - (charY + 50.0))*(total_x/perfect_x);
 
 					//total_x = ((jumpx + 90/2) + (jump_strength*5))%220;
-					//double dist_to_edge = (draw_arr[focusidx].x + 8) - (charX); 
+					// double dist_to_edge = (draw_arr[focusidx].x + 8) - (charX); 
 					//total_x = (double)((int)(dist_to_edge + (jump_strength*5)) % 220);
 
 					// // if x dist is at "tip" of block, adjust x dist
+					if (total_x < ((draw_arr[focusidx+1].x + 22.5+ charW/2) - (charX + charW/2)) && 
+						total_x > ((draw_arr[focusidx+1].x + 22.5- charW/2) - (charX + charW/2))){
+							total_x = ((draw_arr[focusidx+1].x + charW/2) - (charX + charW/2));
+					}
+					else if (total_x < ((draw_arr[focusidx+1].x + 90.0-22.5 + charW/2) - (charX + charW/2)) && 
+						total_x > ((draw_arr[focusidx+1].x + 90.0-22.5 - charW/2) - (charX + charW/2))){
+							total_x = ((draw_arr[focusidx+1].x + 90.0-22.5 - charW/2) - (charX + charW/2));
+					}
+
 					// if ((charX + total_x) >= draw_arr[focusidx+1].x - charW &&
 				   	//  (charX + total_x) <= draw_arr[focusidx+1].x){
 					//        total_x -= charW;
@@ -462,18 +482,19 @@ int main(void)
 					// }
 
 					// // if x dist is ahead/beyond block, adjust y dist to be on "ground"
-					// if ((charX + total_x) > draw_arr[focusidx+1].x + 90.0|| 
-				   	//  (charX + total_x) < draw_arr[focusidx+1].x) {
-					// 	// should account for slant 
-					// 	gameover = 1;
-					// 	total_y -= 80.0; // 80 is imageHeight 
-					// } 
+
+					if (total_x < ((draw_arr[focusidx+1].x + 22.5 - charW/2) - (charX + charW/2))|| 
+				 		total_x > ((draw_arr[focusidx+1].x + 67.5 + charW/2) - (charX + charW/2))) {
+						// should account for slant 
+						gameover = 1;
+						total_y -= 30.0; // 80 is imageHeight 
+					} 
 
 					// projectile jump based on total_x and total_y
 					double total_t = Fspeed;
 					
 					double init_velocity_x = total_x/total_t; 
-					double init_velocity_y = (total_y - (0.5*a*total_t*total_t))/total_t; // y = y0 + v0yt + 0.5gt^2
+					double init_velocity_y = (total_y - (4.5*a*total_t*total_t))/total_t; // y = y0 + v0yt + 0.5gt^2
 					
 					double init_char_x = charX;
 					double init_char_y = charY;
@@ -484,7 +505,7 @@ int main(void)
 						clear_draw_array();
 						
 						// displacement relative to starting position
-						double disty = (init_velocity_y*t) + (0.5*a*t*t);
+						double disty = (init_velocity_y*t) + (4.5*a*t*t);
 						
 						charX += init_velocity_x; 
 						charY = init_char_y - disty;
@@ -495,16 +516,63 @@ int main(void)
 						wait_for_vsync();
 						pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
 					}
-					if(charX > draw_arr[focusidx+1].x +90.0||charX < draw_arr[focusidx+1].x){
-						*led_ptr = 1;
-					}
+					// if(charX > draw_arr[focusidx+1].x +90.0||charX < draw_arr[focusidx+1].x){
+					// 	*led_ptr = 1;
+					// }
 
 					if(gameover){
 						/*gameover page here*/
 						// save jumpcount into history
 						// wait for user input to return to the beginning page
 
+						// clear the current screen animation
+						clear_char();
+						clear_draw_array();
+						draw_array();
+						draw_char(0);
+						// strip clear animation
+						int a, b, c, d, colour;
+						for(a = 0; a<325; a++){
+							for(c = 0; c < a; c++){
+								for(b = 0; b < 30; b++){
+									for(d = 0; d<4; d++){
+										if((c == a-1) || (b == 0)||(b==29)){
+											colour = 0xFFFF;
+										}else{
+											colour = 0x0;
+										}
+										plot_pixel(c, b + 60*d, colour);
+										plot_pixel(319-c, b + 30 + 60*d, colour);
+									}
+								}
+							}
+							wait_for_vsync();
+							pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
+						}
+						// draw_title();
+						JUMP_display();
+						draw objnew = {0, 110.0, 120.0};
+						draw_arr[0] = objnew;
+						nplatform = 1;
+						//middle clear animation
+						for(a = 0; a<165; a++){
+							draw_title();
+							draw_array();
+							draw_char(0);//draw character
+							// for(c = 0; c < a; c++){
+								for(d = 0; d < 160-a; d++){
+									for(b = 0; b<240; b++){
+									plot_pixel(d, b, 0x0);
+									plot_pixel(325-d, b, 0x0);
+								}
 
+								}
+							// }
+							wait_for_vsync();
+							pixel_buffer_start = *(pixel_ctrl_ptr + 1); 
+						}
+
+						while(1){}
 
 						charX = 147.0; //set initial character x, y position
 						charY = 100.0;
@@ -595,8 +663,6 @@ int main(void)
 			}
 			//check press at every active drawing cycle
 
-
-
 			wait_for_vsync(); // swap front and back buffers on VGA vertical sync
 			pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
 		}
@@ -619,11 +685,29 @@ void wait_for_vsync(){
 void draw_title(){
 	VGA_text_clean();
 	char title_text[]= "Press Key0 to start game";
-	char history_best[] = 
+	// char history_best[] = 
 	clear_screen();
 	//plot_image(110, 120, image_box_100_83, 100, 83);
 	plot_image(50, 5, image_title_210_70, 210, 70);
 	VGA_text(28, 20, title_text);
+}
+
+void clear_title(){
+	VGA_text_clean();
+	// char title_text[]= "Press Key0 to start game";
+	// char history_best[] = 
+	int i;
+	for(i = 1; i<70; i++){
+		clear_screen();
+		draw_array();
+		draw_char(0);//draw character
+		plot_image(50, 5-i, image_title_210_70, 210, 70);
+		wait_for_vsync(); // swap front and back buffers on VGA vertical sync
+			pixel_buffer_start = *(pixel_ctrl_ptr + 1); // new back buffer
+	}
+	//plot_image(110, 120, image_box_100_83, 100, 83);
+	// plot_image(50, 5, image_title_210_70, 210, 70);
+	// VGA_text(28, 20, title_text);
 }
 
 void plot_pixel(int x, int y, short int line_color)
